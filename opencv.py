@@ -12,6 +12,7 @@ smile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_smile
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 # Face tracking for filtering small changes
@@ -197,6 +198,48 @@ def crop_circle_region(frame, center_x, center_y, radius):
     cropped = result[y_min:y_max, x_min:x_max]
     return cropped
 
+def cleanup_old_captures(output_dir, keep_latest=True):
+    """
+    Delete all old smile captures, keeping only the latest one
+    """
+    if not os.path.exists(output_dir):
+        return
+    
+    files = [f for f in os.listdir(output_dir) if f.startswith('smile_capture_') and f.endswith('.jpg')]
+    
+    if len(files) <= 1:
+        return
+    
+    # Sort by modification time
+    files_with_time = [(os.path.join(output_dir, f), os.path.getmtime(os.path.join(output_dir, f))) for f in files]
+    files_with_time.sort(key=lambda x: x[1], reverse=True)
+    
+    # Delete all except the latest
+    for filepath, _ in files_with_time[1:]:
+        try:
+            os.remove(filepath)
+            print(f"Deleted old capture: {os.path.basename(filepath)}")
+        except Exception as e:
+            print(f"Failed to delete {filepath}: {e}")
+
+def get_latest_smile_capture(output_dir):
+    """
+    Get the path to the latest smile capture
+    Returns None if no captures exist
+    """
+    if not os.path.exists(output_dir):
+        return None
+    
+    files = [f for f in os.listdir(output_dir) if f.startswith('smile_capture_') and f.endswith('.jpg')]
+    
+    if not files:
+        return None
+    
+    files_with_time = [(os.path.join(output_dir, f), os.path.getmtime(os.path.join(output_dir, f))) for f in files]
+    files_with_time.sort(key=lambda x: x[1], reverse=True)
+    
+    return files_with_time[0][0]
+
 def detect_smiles_threaded(roi_gray, roi_color, face_id):
     """Detect smiles using both cascade AND curve analysis for enhanced detection"""
     if roi_gray.size == 0:
@@ -335,6 +378,9 @@ try:
                             filename = os.path.join(output_dir, f"smile_capture_{timestamp}.jpg")
                             cv2.imwrite(filename, circle_crop)
                             print(f"✓ Captured after 3 second human smile verification! Saved: {filename}")
+                            
+                            # Clean up old captures, keep only latest
+                            cleanup_old_captures(output_dir)
                             
                             cv2.putText(frame, "CAPTURED!", (x-50, y+h+30), 
                                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
