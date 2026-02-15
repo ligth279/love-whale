@@ -13,7 +13,8 @@ def get_latest_smile_capture():
     if not SMILE_CAPTURES_DIR.exists():
         return None
     
-    files = [f for f in os.listdir(SMILE_CAPTURES_DIR) if f.startswith('smile_capture_') and f.endswith('.jpg')]
+    # Look for face_*.png files (from FaceCapture) or smile_capture_*.jpg (legacy)
+    files = [f for f in os.listdir(SMILE_CAPTURES_DIR) if (f.startswith('face_') and f.endswith('.png')) or (f.startswith('smile_capture_') and f.endswith('.jpg'))]
     
     if not files:
         return None

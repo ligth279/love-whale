@@ -2,6 +2,7 @@ from pathlib import Path
 import pygame
 import random
 from player_sprite import create_player_sprite
+from face_capture import FaceCapture
 
 ASSETS_DIR = Path(__file__).parent / "assets"
 BACKGROUND_IMAGE = ASSETS_DIR / "1.png"
@@ -77,12 +78,12 @@ class MinusPointer(pygame.sprite.Sprite):
             try:
                 loaded_img = pygame.image.load(str(MINUS_IMAGE))
                 self.image = pygame.transform.scale(loaded_img, (32, 32))
-                print(f"✓ Loaded minus image from {MINUS_IMAGE}")
+                print(f"[OK] Loaded minus image from {MINUS_IMAGE}")
             except Exception as e:
-                print(f"✗ Failed to load {MINUS_IMAGE}: {e}, using fallback")
+                print(f"[FAIL] Failed to load {MINUS_IMAGE}: {e}, using fallback")
                 self.draw_minus()
         else:
-            print(f"✗ Minus image not found at {MINUS_IMAGE}, using fallback")
+            print(f"[FAIL] Minus image not found at {MINUS_IMAGE}, using fallback")
             self.draw_minus()
     
     def draw_minus(self):
@@ -251,7 +252,7 @@ class Player(pygame.sprite.Sprite):
             if minus.active and not minus.collected and self.rect.colliderect(minus.rect):
                 minus.collected = True
                 self.hearts_collected -= MINUS_POINTER_PENALTY
-                print(f"💔 Hit a minus pointer! Hearts now: {self.hearts_collected}")
+                print(f"[-] Hit a minus pointer! Hearts now: {self.hearts_collected}")
         
         # Death on falling off screen
         if self.rect.top > SCREEN_HEIGHT:
@@ -376,7 +377,7 @@ def create_level():
                 hearts.append(Heart(x, ground_y))
                 heart_count += 1
     
-    print(f"✓ Total hearts placed: {len(hearts)} (target: {HEARTS_TO_WIN})")
+    print(f"[OK] Total hearts placed: {len(hearts)} (target: {HEARTS_TO_WIN})")
     print(f"  ~ {len([h for h in hearts if h.rect.y < 250])} on floating platforms")
     print(f"  ~ {len([h for h in hearts if h.rect.y >= LEVEL_HEIGHT - FLOOR_TILE_SIZE - 50])} on ground floor")
     
@@ -410,7 +411,7 @@ def create_level():
                 
                 if not overlap:
                     minus_pointers.append(MinusPointer(minus_x, minus_y))
-                    print(f"✓ Minus pointer {minus_count + 1} at ({minus_x}, {minus_y}) [FLOATING]")
+                    print(f"[OK] Minus pointer {minus_count + 1} at ({minus_x}, {minus_y}) [FLOATING]")
                     minus_count += 1
                     placed = True
             
@@ -427,7 +428,7 @@ def create_level():
                 
                 if not overlap:
                     minus_pointers.append(MinusPointer(ground_x, ground_y))
-                    print(f"✓ Minus pointer {minus_count + 1} at ({ground_x}, {ground_y}) [GROUND FLOOR]")
+                    print(f"[OK] Minus pointer {minus_count + 1} at ({ground_x}, {ground_y}) [GROUND FLOOR]")
                     minus_count += 1
                     placed = True
             
@@ -444,7 +445,7 @@ def create_level():
                 
                 if not overlap:
                     minus_pointers.append(MinusPointer(random_x, random_y))
-                    print(f"✓ Minus pointer {minus_count + 1} at ({random_x}, {random_y}) [RANDOM]")
+                    print(f"[OK] Minus pointer {minus_count + 1} at ({random_x}, {random_y}) [RANDOM]")
                     minus_count += 1
                     placed = True
             
@@ -870,7 +871,7 @@ def draw_ui(screen, player):
     # Warning when minus pointers are active
     if player.hearts_collected >= MINUS_SPAWN_THRESHOLD:
         warning_font = pygame.font.Font(None, 28)
-        warning_text = warning_font.render("⚠️ MINUS POINTERS ACTIVE! AVOID THEM!", True, (255, 100, 100))
+        warning_text = warning_font.render("[!] MINUS POINTERS ACTIVE! AVOID THEM!", True, (255, 100, 100))
         screen.blit(warning_text, (SCREEN_WIDTH - 400, 20))
 
 
@@ -886,6 +887,18 @@ def main() -> None:
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Love Whale - Level 1")
     clock = pygame.time.Clock()
+
+    # Capture player's face for custom sprite
+    print("\n" + "="*50)
+    print("CAPTURING YOUR SMILE...")
+    print("="*50)
+    capturer = FaceCapture()
+    face_path = capturer.capture_face_with_smile(timeout=60)
+    capturer.release()
+    if face_path:
+        print(f"\n[OK] Face captured: {face_path}\n")
+    else:
+        print("\nNo face captured - using default character\n")
 
     # Show dialogue first
     dialogue_complete = show_dialogue(screen, background, clock)
@@ -950,7 +963,7 @@ def main() -> None:
             # Activate all minus pointers so they can be collected
             for minus in minus_pointers:
                 minus.active = True
-            print(f"⚠️  WARNING! Minus pointers have appeared! Avoid them!")
+            print(f"[!] WARNING! Minus pointers have appeared! Avoid them!")
             player.minus_activated = True
         
         # Get camera position
@@ -984,14 +997,19 @@ def main() -> None:
         pygame.display.flip()
         clock.tick(60)
 
-    pygame.quit()
-    if game_won:
+    # Show ending screen if player died without reaching the end
+    if not game_won:
         if player.hearts_collected >= HEARTS_TO_WIN:
-            print("\n🎉 CONGRATULATIONS! You collected all the hearts! 🎉")
+            show_win_screen(screen, background, clock, player.hearts_collected)
+        elif player.hearts_collected <= -1:
+            show_lonely_win_screen(screen, background, clock, player.hearts_collected)
+        elif player.hearts_collected > 0:
+            show_bachelor_screen(screen, background, clock, player.hearts_collected)
         else:
-            print("\n💔 You became so lonely that you won by default! 💔")
-    else:
-        print("\n💔 You lost all your lives. Game Over.")
+            # Game Over screen for 0 or negative hearts
+            print(f"Game Over! You finished with {player.hearts_collected} hearts.")
+
+    pygame.quit()
 
 
 if __name__ == "__main__":
