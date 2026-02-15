@@ -75,3 +75,49 @@ def create_player_sprite(width=64, height=96):
     sprite = pygame.image.fromstring(composite_rgb.tobytes(), composite_rgb.shape[1::-1], "RGB")
     
     return sprite
+
+
+def save_player_sprite_debug(width=64, height=96):
+    """
+    Create and save composite sprite to assets folder for preview
+    """
+    if not BODY_IMAGE.exists():
+        raise FileNotFoundError(f"Body image not found at {BODY_IMAGE}")
+    
+    body = cv2.imread(str(BODY_IMAGE))
+    if body is None:
+        raise FileNotFoundError(f"Failed to load body image: {BODY_IMAGE}")
+    
+    body = cv2.resize(body, (width, height))
+    
+    smile_path = get_latest_smile_capture()
+    if smile_path is None:
+        print("Warning: No smile capture found. Using body only.")
+        body_rgb = cv2.cvtColor(body, cv2.COLOR_BGR2RGB)
+        debug_path = ASSETS_DIR / "player_sprite_debug.png"
+        cv2.imwrite(str(debug_path), body)
+        print(f"Saved debug sprite to: {debug_path}")
+        return
+    
+    smile = cv2.imread(str(smile_path))
+    if smile is None:
+        print(f"Warning: Failed to load smile capture. Using body only.")
+        body_rgb = cv2.cvtColor(body, cv2.COLOR_BGR2RGB)
+        debug_path = ASSETS_DIR / "player_sprite_debug.png"
+        cv2.imwrite(str(debug_path), body)
+        print(f"Saved debug sprite to: {debug_path}")
+        return
+    
+    head_height = int(height * 0.4)
+    head_width = int(width * 0.8)
+    smile = cv2.resize(smile, (head_width, head_height))
+    
+    head_x_offset = (width - head_width) // 2
+    head_y_offset = 10
+    
+    composite = body.copy()
+    composite[head_y_offset:head_y_offset+head_height, head_x_offset:head_x_offset+head_width] = smile
+    
+    debug_path = ASSETS_DIR / "player_sprite_debug.png"
+    cv2.imwrite(str(debug_path), composite)
+    print(f"Saved debug sprite to: {debug_path}")
