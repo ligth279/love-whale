@@ -377,7 +377,7 @@ try:
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                             filename = os.path.join(output_dir, f"smile_capture_{timestamp}.jpg")
                             cv2.imwrite(filename, circle_crop)
-                            print(f"✓ Captured after 3 second human smile verification! Saved: {filename}")
+                            print(f"[OK] Captured after 3 second human smile verification! Saved: {filename}")
                             
                             # Clean up old captures, keep only latest
                             cleanup_old_captures(output_dir)
